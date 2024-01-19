@@ -14,13 +14,28 @@ pub struct GraphDbRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum DefineResourceType {
+    Namespace { name: String },
+    Database { name: String },
+    Table { name: String },
+}
+
+pub type GraphDbRequestParams = Vec<(String, serde_json::Value)>;
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum GraphDbAction {
     Open,
     RemoveDb,
-    Create { statement: String },
-    Update { statement: String },
-    Delete { record_id: String },
-    Read { query: String },
+    Define {
+        resource: DefineResourceType,
+    },
+    Statement {
+        statement: String,
+        params: Option<GraphDbRequestParams>,
+    },
+    Read {
+        statement: String,
+    },
     Backup,
 }
 
@@ -58,20 +73,18 @@ pub struct GraphDb {
 }
 
 impl GraphDb {
-    /// Query database. Only allows graphdb read keywords.
+    /// Read a value from the database. Can only select.
     pub fn read(
         &self,
-        query: String,
-        params: Vec<String>,
+        statement: String,
     ) -> anyhow::Result<Vec<HashMap<String, serde_json::Value>>> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
                 package_id: self.package_id.clone(),
                 db: self.db.clone(),
-                action: GraphDbAction::Read { query },
+                action: GraphDbAction::Read { statement },
             })?)
-            .blob_bytes(serde_json::to_vec(&params)?)
             .send_and_await_response(5)?;
 
         match res {
@@ -102,16 +115,54 @@ impl GraphDb {
         }
     }
 
-    /// Execute a statement. Only allows graphdb write keywords.
-    pub fn create(&self, statement: String, params: Vec<serde_json::Value>) -> anyhow::Result<()> {
+    /// Execute a statement against the database. Allows any SurrealDB statements.
+    /// Params are optional.
+    /// Params are a list of (name, value) pairs.
+    pub fn statement(
+        &self,
+        statement: String,
+        params: Option<GraphDbRequestParams>,
+    ) -> anyhow::Result<()> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
                 package_id: self.package_id.clone(),
                 db: self.db.clone(),
-                action: GraphDbAction::Create { statement },
+                action: GraphDbAction::Statement {
+                    statement,
+                    params: params.clone(),
+                },
             })?)
             .blob_bytes(serde_json::to_vec(&params)?)
+            .send_and_await_response(5)?;
+
+        match res {
+            Ok(Message::Response { body, .. }) => {
+                let response = serde_json::from_slice::<GraphDbResponse>(&body)?;
+
+                match response {
+                    GraphDbResponse::Ok => Ok(()),
+                    GraphDbResponse::Err { error } => Err(error.into()),
+                    _ => Err(anyhow::anyhow!(
+                        "graphdb: unexpected response {:?}",
+                        response
+                    )),
+                }
+            }
+            _ => Err(anyhow::anyhow!("graphdb: unexpected message: {:?}", res)),
+        }
+    }
+
+    /// Define a resource.
+    /// This is a helper function to make it easier to define a namespace, database, or table.
+    pub fn define(&self, resource: DefineResourceType) -> anyhow::Result<()> {
+        let res = Request::new()
+            .target(("our", "graphdb", "distro", "sys"))
+            .body(serde_json::to_vec(&GraphDbRequest {
+                package_id: self.package_id.clone(),
+                db: self.db.clone(),
+                action: GraphDbAction::Define { resource },
+            })?)
             .send_and_await_response(5)?;
 
         match res {
