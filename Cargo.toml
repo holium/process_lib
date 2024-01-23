@@ -4,7 +4,7 @@ version = "0.5.4"
 edition = "2021"
 
 [features]
-eth = [ "ethers-core", "alloy-rpc-types" ]
+eth = ["ethers-core", "alloy-rpc-types"]
 
 [dependencies]
 alloy-rpc-types = { git = "https://github.com/alloy-rs/alloy.git", rev = "3b1c310", optional = true }
