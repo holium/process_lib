@@ -26,7 +26,8 @@ pub type GraphDbRequestParams = serde_json::Value;
 pub enum GraphDbAction {
     Open,
     Define { resource: DefineResourceType },
-    Query { statement: String },
+    Write { statement: String },
+    Read { statement: String },
     Backup,
     RemoveDb,
 }
@@ -70,12 +71,12 @@ pub struct GraphDb {
 /// Functions:
 ///     open()
 ///     define(resource: Resource)
-///     query(resource: Resource, params: Option<serde_json::Value>)
+///     write(resource: Resource, params: Option<serde_json::Value>)
+///     read(resource: Resource, params: Option<serde_json::Value>)
 ///     backup()
 ///     remove_db()
 impl GraphDb {
-    /// Define a resource.
-    /// This is a helper function to make it easier to define a namespace, database, or table.
+    /// Define a resource (table, database, namespace).
     pub fn define(&self, resource: DefineResourceType) -> anyhow::Result<()> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
@@ -91,24 +92,56 @@ impl GraphDb {
         )
     }
 
-    /// Query the database.
-    /// Params are optional.
-    ///
-    pub fn query(
+    /// Execute a write query.
+    pub fn write(
         &self,
         statement: String,
         params: Option<serde_json::Value>,
+    ) -> anyhow::Result<()> {
+        let res = match params {
+            Some(params) => Request::new()
+                .target(("our", "graphdb", "distro", "sys"))
+                .body(serde_json::to_vec(&GraphDbRequest {
+                    package_id: self.package_id.clone(),
+                    db: self.db.clone(),
+                    action: GraphDbAction::Write {
+                        statement: serde_json::to_string(&statement)?,
+                    },
+                })?)
+                .blob_bytes(serde_json::to_vec(&params)?)
+                .send_and_await_response(5)?,
+            // if params is None, we don't send a blob
+            None => Request::new()
+                .target(("our", "graphdb", "distro", "sys"))
+                .body(serde_json::to_vec(&GraphDbRequest {
+                    package_id: self.package_id.clone(),
+                    db: self.db.clone(),
+                    action: GraphDbAction::Write {
+                        statement: serde_json::to_string(&statement)?,
+                    },
+                })?)
+                .send_and_await_response(5)?,
+        };
+
+        self.handle_response(
+            res.map_err(|e| anyhow::anyhow!("graphdb: define() - response error: {:?}", e)),
+        )
+    }
+
+    /// Execute a read query.
+    pub fn read(
+        &self,
+        statement: String,
     ) -> anyhow::Result<Vec<HashMap<String, serde_json::Value>>> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
                 package_id: self.package_id.clone(),
                 db: self.db.clone(),
-                action: GraphDbAction::Query {
+                action: GraphDbAction::Read {
                     statement: serde_json::to_string(&statement)?,
                 },
             })?)
-            .blob_bytes(serde_json::to_vec(&params)?)
             .send_and_await_response(5)?;
 
         match res {
@@ -120,6 +153,7 @@ impl GraphDb {
                         let blob = get_blob().ok_or_else(|| GraphDbError::InputError {
                             error: "graphdb: no blob".to_string(),
                         })?;
+                        println!("processlib read response blob: {:?}", blob);
                         let values = serde_json::from_slice::<
                             Vec<HashMap<String, serde_json::Value>>,
                         >(&blob.bytes)
