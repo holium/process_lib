@@ -1,6 +1,5 @@
 use crate::{get_blob, Message, PackageId, Request};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
 use thiserror::Error;
 
 /// Actions are sent to a specific graphdb database, "db" is the name,
@@ -105,7 +104,7 @@ impl GraphDb {
                     package_id: self.package_id.clone(),
                     db: self.db.clone(),
                     action: GraphDbAction::Write {
-                        statement: serde_json::to_string(&statement)?,
+                        statement,
                     },
                 })?)
                 .blob_bytes(serde_json::to_vec(&params)?)
@@ -117,7 +116,7 @@ impl GraphDb {
                     package_id: self.package_id.clone(),
                     db: self.db.clone(),
                     action: GraphDbAction::Write {
-                        statement: serde_json::to_string(&statement)?,
+                        statement,
                     },
                 })?)
                 .send_and_await_response(5)?,
@@ -132,14 +131,14 @@ impl GraphDb {
     pub fn read(
         &self,
         statement: String,
-    ) -> anyhow::Result<Vec<HashMap<String, serde_json::Value>>> {
+    ) -> anyhow::Result<serde_json::Value> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
                 package_id: self.package_id.clone(),
                 db: self.db.clone(),
                 action: GraphDbAction::Read {
-                    statement: serde_json::to_string(&statement)?,
+                    statement
                 },
             })?)
             .send_and_await_response(5)?;
@@ -151,14 +150,11 @@ impl GraphDb {
                 match response {
                     GraphDbResponse::Data => {
                         let blob = get_blob().ok_or_else(|| GraphDbError::InputError {
-                            error: "graphdb: no blob".to_string(),
+                            error: "no blob".to_string(),
                         })?;
-                        println!("processlib read response blob: {:?}", blob);
-                        let values = serde_json::from_slice::<
-                            Vec<HashMap<String, serde_json::Value>>,
-                        >(&blob.bytes)
+                        let values = serde_json::from_slice::<serde_json::Value>(&blob.bytes)
                         .map_err(|e| GraphDbError::InputError {
-                            error: format!("graphdb: gave unparsable response: {}", e),
+                            error: format!("gave unparsable response: {}", e),
                         })?;
                         Ok(values)
                     }
