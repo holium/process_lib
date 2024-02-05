@@ -12,7 +12,7 @@ pub use file::*;
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VfsRequest {
     /// path is always prepended by package_id, the capabilities of the topmost folder are checked
-    /// "/your_package:publisher.uq/drive_folder/another_folder_or_file"
+    /// "/your_package:publisher.os/drive_folder/another_folder_or_file"
     pub path: String,
     pub action: VfsAction,
 }
@@ -147,5 +147,18 @@ pub fn metadata(path: &str) -> anyhow::Result<FileMetadata> {
             }
         }
         _ => Err(anyhow::anyhow!("vfs: unexpected message: {:?}", message)),
+    }
+}
+
+/// Removes a path, if it's either a directory or a file.
+pub fn remove_path(path: &str) -> anyhow::Result<()> {
+    let meta = metadata(path)?;
+    match meta.file_type {
+        FileType::Directory => remove_dir(path),
+        FileType::File => remove_file(path),
+        _ => Err(anyhow::anyhow!(
+            "vfs: path is not a file or directory: {}",
+            path
+        )),
     }
 }
