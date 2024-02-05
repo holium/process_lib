@@ -103,9 +103,7 @@ impl GraphDb {
                 .body(serde_json::to_vec(&GraphDbRequest {
                     package_id: self.package_id.clone(),
                     db: self.db.clone(),
-                    action: GraphDbAction::Write {
-                        statement,
-                    },
+                    action: GraphDbAction::Write { statement },
                 })?)
                 .blob_bytes(serde_json::to_vec(&params)?)
                 .send_and_await_response(5)?,
@@ -115,9 +113,7 @@ impl GraphDb {
                 .body(serde_json::to_vec(&GraphDbRequest {
                     package_id: self.package_id.clone(),
                     db: self.db.clone(),
-                    action: GraphDbAction::Write {
-                        statement,
-                    },
+                    action: GraphDbAction::Write { statement },
                 })?)
                 .send_and_await_response(5)?,
         };
@@ -128,18 +124,13 @@ impl GraphDb {
     }
 
     /// Execute a read query.
-    pub fn read(
-        &self,
-        statement: String,
-    ) -> anyhow::Result<serde_json::Value> {
+    pub fn read(&self, statement: String) -> anyhow::Result<serde_json::Value> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
                 package_id: self.package_id.clone(),
                 db: self.db.clone(),
-                action: GraphDbAction::Read {
-                    statement
-                },
+                action: GraphDbAction::Read { statement },
             })?)
             .send_and_await_response(5)?;
 
@@ -153,9 +144,9 @@ impl GraphDb {
                             error: "no blob".to_string(),
                         })?;
                         let values = serde_json::from_slice::<serde_json::Value>(&blob.bytes)
-                        .map_err(|e| GraphDbError::InputError {
-                            error: format!("gave unparsable response: {}", e),
-                        })?;
+                            .map_err(|e| GraphDbError::InputError {
+                                error: format!("gave unparsable response: {}", e),
+                            })?;
                         Ok(values)
                     }
                     GraphDbResponse::Err { error } => Err(error.into()),
