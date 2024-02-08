@@ -42,6 +42,10 @@ pub mod sqlite;
 pub mod timer;
 /// Interact with the virtual filesystem
 pub mod vfs;
+/// Interact with python and run scripts from a package's pkg/scripts directory
+/// Requires the `python` feature to be enabled.
+// #[cfg(feature = "python")]
+pub mod python;
 
 // Types
 
