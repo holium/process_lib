@@ -218,6 +218,16 @@ pub struct PackageManifestEntry {
     pub public: bool,
 }
 
+/// the type that gets deserialized from a `scripts.json` object
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DotScriptsEntry {
+    pub root: bool,
+    pub public: bool,
+    pub request_networking: bool,
+    pub request_capabilities: Option<Vec<serde_json::Value>>,
+    pub grant_capabilities: Option<Vec<serde_json::Value>>,
+}
+
 impl std::fmt::Display for Message {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         match self {
@@ -380,4 +390,10 @@ pub fn en_wit_send_error_kind(kind: SendErrorKind) -> wit::SendErrorKind {
         SendErrorKind::Offline => wit::SendErrorKind::Offline,
         SendErrorKind::Timeout => wit::SendErrorKind::Timeout,
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum MessageType {
+    Request,
+    Response,
 }
