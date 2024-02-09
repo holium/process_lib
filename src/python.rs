@@ -56,14 +56,20 @@ impl Python {
     }
     /// Run a python script with arguments.
     /// The script to run must be in the package's `scripts` directory.
-    pub fn run_script(&self, script: String, func: String, args: Vec<String>) -> anyhow::Result<Vec<u8>> {
+    pub fn run_script(
+        &self,
+        script: String,
+        func: String,
+        args: Vec<String>,
+    ) -> anyhow::Result<Vec<u8>> {
         let res = Request::new()
             .target(("our", "python", "distro", "sys"))
             .body(serde_json::to_vec(&PythonRequest {
                 package_id: self.package_id.clone(),
-                action: PythonAction::RunScript { script, func, args},
+                action: PythonAction::RunScript { script, func, args },
             })?)
-            .send_and_await_response(5).map_err(|e| anyhow::anyhow!("python: {}", e))?;
+            .send_and_await_response(5)
+            .map_err(|e| anyhow::anyhow!("python: {}", e))?;
 
         match res {
             Ok(Message::Response { body, .. }) => {

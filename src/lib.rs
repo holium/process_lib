@@ -36,16 +36,16 @@ pub mod http;
 pub mod kernel_types;
 /// Interact with the key_value module
 pub mod kv;
+/// Interact with python and run scripts from a package's pkg/scripts directory
+/// Requires the `python` feature to be enabled.
+// #[cfg(feature = "python")]
+pub mod python;
 /// Interact with the sqlite module
 pub mod sqlite;
 /// Interact with the timer runtime module.
 pub mod timer;
 /// Interact with the virtual filesystem
 pub mod vfs;
-/// Interact with python and run scripts from a package's pkg/scripts directory
-/// Requires the `python` feature to be enabled.
-// #[cfg(feature = "python")]
-pub mod python;
 
 // Types
 
