@@ -76,7 +76,7 @@ pub struct GraphDb {
 ///     remove_db()
 impl GraphDb {
     /// Define a resource (table, database, namespace).
-    pub fn define(&self, resource: DefineResourceType) -> anyhow::Result<()> {
+    pub fn define(&self, resource: DefineResourceType, timeout: u64) -> anyhow::Result<()> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
@@ -84,7 +84,7 @@ impl GraphDb {
                 db: self.db.clone(),
                 action: GraphDbAction::Define { resource },
             })?)
-            .send_and_await_response(5)?;
+            .send_and_await_response(timeout)?;
 
         self.handle_response(
             res.map_err(|e| anyhow::anyhow!("graphdb: define() - response error: {:?}", e)),
@@ -96,6 +96,7 @@ impl GraphDb {
         &self,
         statement: String,
         params: Option<serde_json::Value>,
+        timeout: u64
     ) -> anyhow::Result<()> {
         let res = match params {
             Some(params) => Request::new()
@@ -115,7 +116,7 @@ impl GraphDb {
                     db: self.db.clone(),
                     action: GraphDbAction::Write { statement },
                 })?)
-                .send_and_await_response(5)?,
+                .send_and_await_response(timeout)?,
         };
 
         self.handle_response(
@@ -124,7 +125,7 @@ impl GraphDb {
     }
 
     /// Execute a read query.
-    pub fn read(&self, statement: String) -> anyhow::Result<serde_json::Value> {
+    pub fn read(&self, statement: String, timeout: u64) -> anyhow::Result<serde_json::Value> {
         let res = Request::new()
             .target(("our", "graphdb", "distro", "sys"))
             .body(serde_json::to_vec(&GraphDbRequest {
@@ -132,7 +133,7 @@ impl GraphDb {
                 db: self.db.clone(),
                 action: GraphDbAction::Read { statement },
             })?)
-            .send_and_await_response(5)?;
+            .send_and_await_response(timeout)?;
 
         match res {
             Ok(Message::Response { body, .. }) => {
