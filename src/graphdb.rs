@@ -96,7 +96,7 @@ impl GraphDb {
         &self,
         statement: String,
         params: Option<serde_json::Value>,
-        timeout: u64
+        timeout: u64,
     ) -> anyhow::Result<()> {
         let res = match params {
             Some(params) => Request::new()
