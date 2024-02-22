@@ -59,6 +59,7 @@ pub enum GraphDbError {
 /// GraphDb helper struct for a db.
 /// Opening or creating a db will give you a Result<GraphDb>.
 /// You can call it's impl functions to interact with it.
+#[derive(Clone)]
 pub struct GraphDb {
     pub package_id: PackageId,
     pub db: String,
